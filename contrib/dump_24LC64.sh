@@ -1,0 +1,14 @@
+#!/bin/sh
+
+set -e
+
+I2C_DEVICE=/dev/i2c-1
+
+START_ADDRESS=0x50
+BYTES=8192
+
+OUTPUT_FILE=OUTPUT_24C64.bin
+
+rm -rf "$OUTPUT_FILE"
+
+sudo eeprog -f -16 -r 0:$BYTES $I2C_DEVICE $ADDRESS >> $OUTPUT_FILE
