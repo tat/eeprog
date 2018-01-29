@@ -69,7 +69,8 @@ static int i2c_write_3b(struct eeprom *e, __u8 buf[3])
 
 int eeprom_open(char *dev_fqn, int addr, int type, struct eeprom* e)
 {
-	int funcs, fd, r;
+	unsigned long funcs;
+        int fd, r;
 	e->fd = e->addr = 0;
 	e->dev = 0;
 	
@@ -87,7 +88,7 @@ int eeprom_open(char *dev_fqn, int addr, int type, struct eeprom* e)
 		return -1;
 	}
 
-	
+
 	// check for req funcs
 	CHECK_I2C_FUNC( funcs, I2C_FUNC_SMBUS_READ_BYTE );
 	CHECK_I2C_FUNC( funcs, I2C_FUNC_SMBUS_WRITE_BYTE );
