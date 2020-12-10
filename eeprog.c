@@ -167,7 +167,7 @@ int main(int argc, char** argv)
 	op = want_hex = dummy = force = sixteen = 0;
 	g_quiet = 0;
 
-	while((ret = getopt(argc, argv, "1:8fr:qhw:xd")) != -1)
+	while((ret = getopt(argc, argv, "1:8fr:qhw:xdt:")) != -1)
 	{
 		switch(ret)
 		{
