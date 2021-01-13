@@ -34,22 +34,23 @@ int g_quiet;
 #define usage_if(a) do { do_usage_if( a , __LINE__); } while(0);
 void do_usage_if(int b, int line)
 {
-const static char *eeprog_usage = 
+const static char *eeprog_usage =
 "eeprog " VERSION ", a 24Cxx EEPROM reader/writer\n"
 "Copyright (c) 2003-2004 by Stefano Barbato - All rights reserved.\n"
-"Usage: eeprog [-fqxdh] [-16|-8] [ -r addr[:count] | -w addr ]  /dev/i2c-N  i2c-address\n" 
+"Usage: eeprog [-fqxdh] [-16|-8] [ -r addr[:count] | -w addr ]  /dev/i2c-N  i2c-address\n"
 "\n"
 "  Address modes: \n"
 "	-8		Use 8bit address mode for 24c0x...24C16 [default]\n"
 "	-16		Use 16bit address mode for 24c32...24C256\n"
 "  Actions: \n"
-"	-r addr[:count]	Read [count] (1 if omitted) bytes from [addr]\n" 
-"			and print them to the standard output\n" 
+"	-r addr[:count]	Read [count] (1 if omitted) bytes from [addr]\n"
+"			and print them to the standard output\n"
 "	-w addr		Write input (stdin) at address [addr] of the EEPROM\n"
+"	-t n		write timeout in ms (default 10)\n"
 "	-h		Print this help\n"
 "  Options: \n"
-"	-x		Set hex output mode\n" 
-"	-d		Dummy mode, display what *would* have been done\n" 
+"	-x		Set hex output mode\n"
+"	-d		Dummy mode, display what *would* have been done\n"
 "	-f		Disable warnings and don't ask confirmation\n"
 "	-q		Quiet mode\n"
 "\n"
@@ -98,7 +99,7 @@ void parse_arg(char *arg, int* paddr, int *psize)
 
 int confirm_action()
 {
-	fprintf(stderr, 
+	fprintf(stderr,
 	"\n"
 	"____________________________WARNING____________________________\n"
 	"Erroneously writing to a system EEPROM (like DIMM SPD modules)\n"
@@ -115,7 +116,7 @@ int confirm_action()
 	"\n"
 	);
 	getchar();
-	return 1; 
+	return 1;
 }
 
 int read_from_eeprom(struct eeprom *e, int addr, int size, int hex)
@@ -126,12 +127,12 @@ int read_from_eeprom(struct eeprom *e, int addr, int size, int hex)
 		die_if((ch = eeprom_read_byte(e, addr)) < 0, "read error");
 		if(hex)
 		{
-			if( (i % 16) == 0 ) 
+			if( (i % 16) == 0 )
 				printf("\n %.4x|  ", addr);
-			else if( (i % 8) == 0 ) 
+			else if( (i % 8) == 0 )
 				printf("  ");
 			printf("%.2x ", ch);
-		} else 
+		} else
 			putchar(ch);
 	}
 	if(hex)
@@ -140,7 +141,7 @@ int read_from_eeprom(struct eeprom *e, int addr, int size, int hex)
 	return 0;
 }
 
-int write_to_eeprom(struct eeprom *e, int addr)
+int write_to_eeprom(struct eeprom *e, int addr, int timeout)
 {
 	int c;
 	while((c = getchar()) != EOF)
@@ -148,6 +149,7 @@ int write_to_eeprom(struct eeprom *e, int addr)
 		print_info(".");
 		fflush(stdout);
 		die_if(eeprom_write_byte(e, addr++, c), "write error");
+		die_if(eeprom_wait_ready(e, timeout), "write timeout");
 	}
 	print_info("\n\n");
 	return 0;
@@ -157,6 +159,7 @@ int main(int argc, char** argv)
 {
 	struct eeprom e;
 	int ret, op, i2c_addr, memaddr, size, want_hex, dummy, force, sixteen;
+	int timeout = 10;
 	char *device, *arg = 0, *i2c_addr_s;
 	struct stat st;
 	int eeprom_type = 0;
@@ -164,14 +167,14 @@ int main(int argc, char** argv)
 	op = want_hex = dummy = force = sixteen = 0;
 	g_quiet = 0;
 
-	while((ret = getopt(argc, argv, "1:8fr:qhw:xd")) != -1)
+	while((ret = getopt(argc, argv, "1:8fr:qhw:xdt:")) != -1)
 	{
 		switch(ret)
 		{
 		case '1':
 			usage_if(*optarg != '6' || strlen(optarg) != 1);
 			die_if(eeprom_type, "EEPROM type switch (-8 or -16) used twice");
-			eeprom_type = EEPROM_TYPE_16BIT_ADDR;	
+			eeprom_type = EEPROM_TYPE_16BIT_ADDR;
 			break;
 		case 'x':
 			want_hex++;
@@ -192,8 +195,11 @@ int main(int argc, char** argv)
 		case 'h':
 			usage_if(1);
 			break;
+		case 't':
+			timeout = atoi(optarg);
+			break;
 		default:
-			die_if(op != 0, "Both read and write requested"); 
+			die_if(op != 0, "Both read and write requested");
 			arg = optarg;
 			op = ret;
 		}
@@ -201,7 +207,7 @@ int main(int argc, char** argv)
 	if(!eeprom_type)
 		eeprom_type = EEPROM_TYPE_8BIT_ADDR; // default
 
-	usage_if(op == 0); // no switches 
+	usage_if(op == 0); // no switches
 	// set device and i2c_addr reading from cmdline or env
 	device = i2c_addr_s = 0;
 	switch(argc - optind)
@@ -232,15 +238,15 @@ int main(int argc, char** argv)
 
 	print_info("eeprog %s, a 24Cxx EEPROM reader/writer\n", VERSION);
 	print_info("Copyright (c) 2003-2004 by Stefano Barbato - All rights reserved.\n");
-	print_info("  Bus: %s, Address: 0x%x, Mode: %dbit\n", 
-			device, i2c_addr, 
+	print_info("  Bus: %s, Address: 0x%x, Mode: %dbit\n",
+			device, i2c_addr,
 			(eeprom_type == EEPROM_TYPE_8BIT_ADDR ? 8 : 16) );
 	if(dummy)
 	{
 		fprintf(stderr, "Dummy mode selected, nothing done.\n");
 		return 0;
 	}
-	die_if(eeprom_open(device, i2c_addr, eeprom_type, &e) < 0, 
+	die_if(eeprom_open(device, i2c_addr, eeprom_type, &e) < 0,
 			"unable to open eeprom device file "
 			"(check that the file exists and that it's readable)");
 	switch(op)
@@ -257,9 +263,9 @@ int main(int argc, char** argv)
 		if(force == 0)
 			confirm_action();
 		parse_arg(arg, &memaddr, &size);
-		print_info("  Writing stdin starting at address 0x%x\n", 
-			memaddr);
-		write_to_eeprom(&e, memaddr);
+		print_info("  Writing stdin starting at address 0x%x with timeout %dms\n",
+			memaddr, timeout);
+		write_to_eeprom(&e, memaddr, timeout);
 		break;
 	default:
 		usage_if(1);

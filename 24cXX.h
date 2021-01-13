@@ -15,7 +15,7 @@
  ***************************************************************************/
 #ifndef _24CXX_H_
 #define _24CXX_H_
-#include "i2c-dev.h"
+#include <linux/i2c-dev.h>
 
 #define EEPROM_TYPE_UNKNOWN	0
 #define EEPROM_TYPE_8BIT_ADDR	1
@@ -35,24 +35,28 @@ struct eeprom
  */
 int eeprom_open(char *dev_fqn, int addr, int type, struct eeprom*);
 /*
- * closees the eeprom device [e] 
+ * closees the eeprom device [e]
  */
 int eeprom_close(struct eeprom *e);
 /*
- * read and returns the eeprom byte at memory address [mem_addr] 
- * Note: eeprom must have been selected by ioctl(fd,I2C_SLAVE,address) 
+ * read and returns the eeprom byte at memory address [mem_addr]
+ * Note: eeprom must have been selected by ioctl(fd,I2C_SLAVE,address)
  */
 int eeprom_read_byte(struct eeprom* e, __u16 mem_addr);
 /*
  * read the current byte
- * Note: eeprom must have been selected by ioctl(fd,I2C_SLAVE,address) 
+ * Note: eeprom must have been selected by ioctl(fd,I2C_SLAVE,address)
  */
 int eeprom_read_current_byte(struct eeprom *e);
 /*
- * writes [data] at memory address [mem_addr] 
- * Note: eeprom must have been selected by ioctl(fd,I2C_SLAVE,address) 
+ * writes [data] at memory address [mem_addr]
+ * Note: eeprom must have been selected by ioctl(fd,I2C_SLAVE,address)
  */
 int eeprom_write_byte(struct eeprom *e, __u16 mem_addr, __u8 data);
+/*
+ * wait for the eeprom to accept new commands, to be called after a write
+ */
+int eeprom_wait_ready(struct eeprom *e, int max_ms_to_wait);
 
 #endif
 
