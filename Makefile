@@ -1,8 +1,8 @@
-CFLAGS=-g -I. -Wall -O2   
+CFLAGS=-g -I. -Wall -O2
 
-all: eeprog 
+all: eeprog
 
-clean: 
+clean:
 	rm -f eeprog eeprog.o 24cXX.o
 
 eeprog: eeprog.o 24cXX.o
